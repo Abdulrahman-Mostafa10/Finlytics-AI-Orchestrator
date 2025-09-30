@@ -1,0 +1,37 @@
+{
+    "id": 1,
+    "national_id": {
+      "name": "Ahmed Hassan Mohamed",
+      "date_of_birth": "1985-03-15",
+      "employment_status": "employed",
+      "profession": "Software Engineer",
+      "marital_status": "married",
+      "address": "123 Nile Street, Cairo, Egypt",
+      "gender": "male"
+    },
+    "dependencies": {
+      "no_of_dependents": 2,
+      "monthly_expenses": {
+        "medical": 800,
+        "education": 1200
+      }
+    },
+    "financial_info": {
+      "monthly_income": 15000,
+      "total_assets": {
+        "gold": 50000,
+        "cash": 25000,
+        "currency": "egyptian"
+      },
+      "monthly_debt": 3000,
+      "monthly_expenses": 8000,
+      "risk_appetite": "medium"
+    },
+    "lifestyle_preferences": {
+      "hobbies": ["reading", "gaming", "photography"],
+      "food_preferences": ["egyptian cuisine", "italian food"],
+      "drinks": ["tea", "coffee"],
+      "sports": ["football", "swimming"]
+    },
+    "Summary_Insights": "On June 10, 2024, a coffee purchase was made at Starbucks for $1500000000.50, paid using a Visa card. This transaction information was captured through an SMS notification, indicating a typical coffee shop visit where the customer used their credit card for payment. The moderate amount suggests this could have included multiple items or premium coffee beverages from the popular coffee chain."
+}

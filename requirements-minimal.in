@@ -1,0 +1,33 @@
+﻿# Core FastAPI/Web
+fastapi
+uvicorn[standard]
+pydantic
+python-dotenv
+
+# AutoGen Core
+autogen
+autogen-core
+
+# LangChain Core
+langchain
+langchain-core
+
+# AI Services
+openai
+groq
+google-generativeai
+
+# Database
+pymongo
+sqlalchemy
+
+# Utilities
+requests
+aiofiles
+anyio
+httpx
+certifi
+tqdm
+
+# Platform-specific
+pywin32; sys_platform == "win32"

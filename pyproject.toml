@@ -1,0 +1,128 @@
+[build-system]
+requires = ["setuptools>=65.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "your-app-name"
+version = "0.1.0"
+description = "Your application description"
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [
+    {name = "Your Name", email = "your.email@example.com"}
+]
+license = {text = "MIT"}
+keywords = ["web", "api", "application"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+# Add your dependencies from requirements.txt here
+dependencies = [
+    "fastapi==0.104.1",
+    "uvicorn[standard]==0.24.0",
+    "pydantic==2.5.0",
+    "sqlalchemy==2.0.23",
+    "python-multipart==0.0.6",
+    "python-jose==3.3.0",
+    "passlib==1.7.4",
+    "bcrypt==4.0.1",
+    "python-dotenv==1.0.0",
+    "requests==2.31.0",
+    "aiofiles==23.2.1"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==7.4.3",
+    "pytest-asyncio==0.21.1",
+    "black==23.11.0",
+    "flake8==6.1.0",
+    "mypy==1.7.1",
+    "isort==5.12.0",
+    "pre-commit==3.5.0"
+]
+test = [
+    "pytest==7.4.3",
+    "pytest-cov==4.1.0",
+    "httpx==0.25.2"
+]
+docs = [
+    "mkdocs==1.5.3",
+    "mkdocs-material==9.4.1"
+]
+
+[project.scripts]
+start-app = "app.main:main"
+create-user = "app.cli:create_user"
+migrate-db = "app.cli:migrate_database"
+
+[project.urls]
+Homepage = "https://github.com/your-username/your-app"
+Documentation = "https://github.com/your-username/your-app/docs"
+Repository = "https://github.com/your-username/your-app"
+Issues = "https://github.com/your-username/your-app/issues"
+
+# Tool configurations
+[tool.black]
+line-length = 88
+target-version = ['py38', 'py39', 'py310', 'py311', 'py312']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+line_length = 88
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "--cov=app --cov-report=term-missing --cov-report=html"
+
+[tool.ruff]
+line-length = 88
+select = [
+    "E", "W", "F",  # Pyflakes errors and warnings
+    "I",            # Isort
+    "B",            # flake8-bugbear
+    "C",            # flake8-comprehensions
+    "UP",           # pyupgrade
+]
+ignore = []
+target-version = "py38"
+
+[tool.ruff.isort]
+known-first-party = ["app"]
+
+# If you're using Poetry-style dependency groups (optional)
+[tool.uv]
+dev-dependencies = ["pytest", "black", "flake8"]
+test-dependencies = ["pytest-cov", "httpx"]

@@ -1,0 +1,155 @@
+AI Financial Advisor
+Overview
+This Python application is an AI-powered financial advisor that generates comprehensive financial summaries and analysis from user data. It utilizes the AutoGen framework with Groq's LLaMA model to create detailed financial profiles through a two-stage analysis process.
+
+Features
+Dual-Stage Analysis: Performs initial analysis followed by enhanced refinement
+Comprehensive Financial Assessment: Analyzes income, expenses, assets, liabilities, and dependencies
+Financial Stability Rating: Provides stability assessment from EXCELLENT to CRITICAL
+Expense Ratio Calculation: Calculates detailed expense-to-income ratios
+Transaction Pattern Analysis: Extracts and analyzes spending patterns from transaction data
+JSON Output: Saves results in structured JSON format
+Requirements
+Dependencies
+Install the required Python packages:
+
+
+pip install autogen-agentchat
+pip install autogen-ext
+pip install autogen-core
+pip install python-dotenv
+pip install asyncio
+
+Generate Code Report
+
+Environment Setup
+Create a .env file in your project directory with the following variables:
+
+env
+GROQ_API_KEY=your_groq_api_key_here
+OPENAI_MODEL_NAME=llama3-8b-8192
+OPENAI_API_BASE=https://api.groq.com/openai/v1
+
+Generate Code Report
+
+Input Data Format
+Create a question.json file containing user financial data. The JSON should include:
+
+question:json
+
+{
+    "id": 1,
+    "national_id": {
+      "name": "Ahmed Hassan Mohamed",
+      "date_of_birth": "1985-03-15",
+      "employment_status": "employed",
+      "profession": "Software Engineer",
+      "marital_status": "married",
+      "address": "123 Nile Street, Cairo, Egypt",
+      "gender": "male"
+    },
+    "dependencies": {
+      "no_of_dependents": 2,
+      "monthly_expenses": {
+        "medical": 800,
+        "education": 1200
+      }
+    },
+    "financial_info": {
+      "monthly_income": 15000,
+      "total_assets": {
+        "gold": 50000,
+        "cash": 25000,
+        "currency": "egyptian"
+      },
+      "monthly_debt": 3000,
+      "monthly_expenses": 8000,
+      "risk_appetite": "medium"
+    },
+    "lifestyle_preferences": {
+      "hobbies": ["reading", "gaming", "photography"],
+      "food_preferences": ["egyptian cuisine", "italian food"],
+      "drinks": ["tea", "coffee"],
+      "sports": ["football", "swimming"]
+    },
+    "Summary_Insights": "On June 10, 2024, a coffee purchase was made at Starbucks for $1500000000.50, paid using a Visa card. This transaction information was captured through an SMS notification, indicating a typical coffee shop visit where the customer used their credit card for payment. The moderate amount suggests this could have included multiple items or premium coffee beverages from the popular coffee chain."
+}
+
+
+Usage
+Prepare Data: Ensure question.json is in the same directory as the script
+Set Environment: Configure your .env file with valid API credentials
+Run Script: Execute the application
+
+
+How It Works
+Stage 1: Initial Analysis
+Loads user data from question.json
+Connects to Groq's LLaMA model via OpenAI-compatible API
+Generates initial financial summary covering:
+Personal demographics
+Employment and income details
+Comprehensive expense breakdown
+Asset and liability assessment
+Dependency costs analysis
+Stage 2: Enhanced Analysis
+Takes the initial summary and original data
+Performs refined analysis with deeper insights
+Calculates precise expense-to-income ratios
+Provides financial stability assessment
+Generates final comprehensive report
+Financial Stability Ratings
+EXCELLENT (0-50%): Very stable financial position with good savings potential
+GOOD (51-70%): Stable finances with moderate savings capacity
+FAIR (71-85%): Manageable but tight budget, limited savings
+POOR (86-100%): Living paycheck to paycheck, financial stress
+CRITICAL (Above 100%): Unsustainable spending, exceeds income
+Output
+The application generates:
+
+Console Output: Real-time analysis progress and results
+JSON File: {username}_enhanced_summary.json containing the final enhanced summary
+Example Output Structure
+Language:json
+
+{
+  "final_enhanced_summary": "Comprehensive financial analysis paragraph with calculations, insights, and stability assessment..."
+}
+
+Generate Code Report
+
+Error Handling
+The application handles common errors:
+
+Missing JSON file: Displays error if question.json is not found
+Invalid JSON format: Shows parsing errors with details
+API connection issues: Reports connection problems with Groq API
+Missing environment variables: Alerts about missing API keys
+Troubleshooting
+Common Issues
+"question.json not found"
+
+Ensure the JSON file exists in the script directory
+Check file permissions
+API Key errors
+
+Verify your Groq API key is valid and active
+Check .env file configuration
+Import errors
+
+Install all required dependencies
+Verify Python version compatibility
+No output generated
+
+Check console for error messages
+Verify JSON data format matches expected structure
+Best Practices
+Ensure accurate and complete financial data in the input JSON
+Keep API keys secure and never commit them to version control
+Review generated summaries for accuracy before making financial decisions
+Use the tool as a supplement to professional financial advice
+License
+This project is open source and available under the MIT License.
+
+Disclaimer
+This tool is for informational purposes only and should not replace professional financial advice. Always consult with qualified financial advisors for important financial decisions.

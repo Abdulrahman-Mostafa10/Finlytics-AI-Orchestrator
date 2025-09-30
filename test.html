@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial Advisor AI Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        #chat {
+            border: 1px solid #ddd;
+            height: 400px;
+            overflow-y: auto;
+            padding: 15px;
+            margin-bottom: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        .user-message {
+            background: #e3f2fd;
+            margin-left: 50px;
+        }
+        .ai-message {
+            background: #f3e5f5;
+            margin-right: 50px;
+        }
+        .agent-info {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        .input-area {
+            display: flex;
+            gap: 10px;
+        }
+        #input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        button {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #5a6fd8;
+        }
+        .quick-tests {
+            margin: 20px 0;
+        }
+        .quick-tests h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .test-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .test-btn {
+            padding: 8px 16px;
+            background: #764ba2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .test-btn:hover {
+            background: #6a4190;
+        }
+        .loading {
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏦 Financial Advisor AI System</h1>
+        
+        <div class="quick-tests">
+            <h3>Quick Test Buttons:</h3>
+            <div class="test-buttons">
+                <button class="test-btn" onclick="quickTest('I want to fill out a questionnaire')">📝 Questionnaire</button>
+                <button class="test-btn" onclick="quickTest('Give me a financial summary')">📊 Summary</button>
+                <button class="test-btn" onclick="quickTest('Show me my spending insights')">💡 Insights</button>
+                <button class="test-btn" onclick="quickTest('Give me investment advice')">💰 Recommendations</button>
+                <button class="test-btn" onclick="quickTest('Help me save $20000')">🎯 Goal Planning</button>
+            </div>
+        </div>
+
+        <div id="chat"></div>
+        
+        <div class="input-area">
+            <input type="text" id="input" placeholder="Type your message here..." onkeypress="handleKeyPress(event)">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        let sessionId = 'web_test_' + Date.now();
+
+        async function sendMessage(message = null) {
+            const input = document.getElementById('input');
+            const chatDiv = document.getElementById('chat');
+            
+            const userMessage = message || input.value.trim();
+            if (!userMessage) return;
+            
+            // Clear input if using manual input
+            if (!message) input.value = '';
+            
+            // Add user message to chat
+            addMessage(userMessage, 'user', '');
+            
+            // Show loading
+            const loadingDiv = addMessage('Thinking...', 'ai', '', 'loading');
+            
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        input: userMessage,
+                        user_id: 'web_user',
+                        session_id: sessionId
+                    })
+                });
+                
+                const data = await response.json();
+                
+                // Remove loading message
+                loadingDiv.remove();
+                
+                if (data.success) {
+                    // Add AI response
+                    addMessage(data.response, 'ai', data.agent || 'Unknown');
+                } else {
+                    addMessage(`Error: ${data.error}`, 'ai', 'Error');
+                }
+                
+            } catch (error) {
+                // Remove loading message
+                loadingDiv.remove();
+                
+                addMessage(`Error: ${error.message}`, 'ai', 'Error');
+            }
+            
+            // Scroll to bottom
+            chatDiv.scrollTop = chatDiv.scrollHeight;
+        }
+
+        function addMessage(text, sender, agent, className = '') {
+            const chatDiv = document.getElementById('chat');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}-message ${className}`;
+            
+            let content = `<strong>${sender === 'user' ? 'You' : 'AI'}:</strong> ${text}`;
+            if (agent && sender === 'ai') {
+                content += `<div class="agent-info">Agent: ${agent}</div>`;
+            }
+            
+            messageDiv.innerHTML = content;
+            chatDiv.appendChild(messageDiv);
+            
+            return messageDiv;
+        }
+
+        function quickTest(message) {
+            sendMessage(message);
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        // Add welcome message
+        window.onload = function() {
+            addMessage('Welcome to the Financial Advisor AI! Try asking me about financial planning, insights, or use the quick test buttons above.', 'ai', 'System');
+        };
+    </script>
+</body>
+</html>

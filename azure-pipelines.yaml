@@ -1,0 +1,227 @@
+trigger:
+  - develop
+pr: none
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  # Registry / image
+  acrLoginServer: 'finlyticsregistry.azurecr.io'
+  acrUser: 'FinlyticsRegistry'
+  imageRepository: 'aiorchestrator'
+  dockerfilePath: 'Containerfile'
+  buildContext: '.'
+  imageTag: '$(Build.BuildId)'
+
+  # Azure / AKS
+  resourceGroup: 'Finlytics'
+  aksCluster: 'Finlytics-Cluster'
+  k8sNamespace: 'default'
+  subscriptionId: '39b5a371-1d5a-4704-9ba6-f7b431ac6725'
+
+  # Names
+  deploymentName: 'aiorchestrator-v1'
+  serviceName: 'aiorchestrator-v1'
+
+stages:
+- stage: BuildAndPush
+  displayName: 'Build and Push Docker Image'
+  jobs:
+    - job: BuildPushImage
+      displayName: 'Build and Push Image to ACR'
+      pool:
+        vmImage: 'ubuntu-latest'
+      steps:
+        - checkout: self
+
+        - script: |
+            docker --version
+            docker info
+          displayName: 'Verify Docker Installation'
+
+        - task: AzureCLI@2
+          displayName: 'Build and Push Docker Image'
+          inputs:
+            azureSubscription: 'Finlytics-RM'
+            scriptType: 'bash'
+            scriptLocation: 'inlineScript'
+            inlineScript: |
+              set -e
+              echo "Logging in to ACR..."
+              az acr login --name $(acrUser)
+
+              echo "Building Docker image..."
+              docker build \
+                -f "$(dockerfilePath)" \
+                -t "$(acrLoginServer)/$(imageRepository):latest" \
+                -t "$(acrLoginServer)/$(imageRepository):$(imageTag)" \
+                "$(buildContext)"
+
+              echo "Pushing image..."
+              docker push "$(acrLoginServer)/$(imageRepository):latest"
+              docker push "$(acrLoginServer)/$(imageRepository):$(imageTag)"
+          env:
+            acrLoginServer: $(acrLoginServer)
+            imageRepository: $(imageRepository)
+            imageTag: $(imageTag)
+            dockerfilePath: $(dockerfilePath)
+            buildContext: $(buildContext)
+
+- stage: Scan
+  displayName: 'Security Scan (Trivy)'
+  dependsOn: BuildAndPush
+  jobs:
+    - job: TrivyScan
+      displayName: 'Run Trivy Scan'
+      pool:
+        vmImage: 'ubuntu-latest'
+
+      steps:
+        - checkout: self
+
+        - script: |
+            mkdir -p trivy-reports
+          displayName: 'Create Report Folder'
+
+        - script: |
+            echo " Installing Trivy..."
+            curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
+          displayName: 'Install Trivy'
+
+        - task: AzureCLI@2
+          name: TrivyScanACR
+          displayName: 'Login to ACR and Run Trivy Scan'
+          inputs:
+            azureSubscription: 'Finlytics-RM'
+            scriptType: 'bash'
+            scriptLocation: 'inlineScript'
+            inlineScript: |
+              set -e
+              echo " Logging into ACR..."
+              az acr login --name $(acrLoginServer)
+
+              echo " Running Trivy scan and saving JSON..."
+              ./bin/trivy image \
+                --scanners vuln,secret,license \
+                --severity HIGH,CRITICAL \
+                --format json \
+                --output trivy-reports/report.json \
+                $(acrLoginServer)/$(imageRepository):$(imageTag) || echo " Trivy scan completed with findings."
+
+              echo " Generating CSV from JSON..."
+              jq -r '
+                ["Target","VulnerabilityID","PkgName","InstalledVersion","Severity","Title","PrimaryURL"],
+                (.Results[]?.Vulnerabilities[]? | [
+                  .Target,
+                  .VulnerabilityID,
+                  .PkgName,
+                  .InstalledVersion,
+                  .Severity,
+                  (.Title | gsub("\n"; " ") | gsub("\""; "")),
+                  .PrimaryURL
+                ])
+                | @csv
+              ' trivy-reports/report.json > trivy-reports/report.csv || echo " CSV generation fallback activated."
+          env:
+            acrLoginServer: $(acrLoginServer)
+            imageRepository: $(imageRepository)
+            imageTag: $(imageTag)
+
+        - task: PublishBuildArtifacts@1
+          displayName: 'Publish Trivy Reports'
+          inputs:
+            PathtoPublish: 'trivy-reports'
+            ArtifactName: 'trivy-reports'
+            publishLocation: 'Container'
+
+- stage: Deploy
+  displayName: Deploy AI Orchestrator to AKS
+  dependsOn: scan
+  jobs:
+    - job: Apply
+      displayName: Create/Update K8s resources (aiorchestrator-v1)
+      steps:
+        - checkout: self
+
+        - task: AzureCLI@2
+          displayName: 'Create/Update deployment & service with secrets'
+          inputs:
+            azureSubscription: 'Finlytics-RM'
+            addSpnToEnvironment: true
+            scriptType: bash
+            scriptLocation: inlineScript
+            inlineScript: |
+              set -e
+
+              az account set --subscription "$subscriptionId"
+
+              # Define variables
+              img="${acrLoginServer}/${imageRepository}:${imageTag}"
+              ns="$k8sNamespace"
+              dep="$deploymentName"
+              svc="$serviceName"
+              containerName="$imageRepository"
+
+              echo "Creating Kubernetes secrets for environment variables..."
+              az aks command invoke -g "$resourceGroup" -n "$aksCluster" --command '
+                set -e
+                kubectl create secret generic app-secrets \
+                  --from-literal=GROQ_API_KEY="'"$GROQ_API_KEY"'" \
+                  --from-literal=AZURE_OPENAI_API_KEY="'"$AZURE_OPENAI_API_KEY"'" \
+                  --from-literal=AZURE_OPENAI_ENDPOINT="'"$AZURE_OPENAI_ENDPOINT"'" \
+                  --from-literal=MONGO_URI="'"$MONGO_URI"'" \
+                  --from-literal=AZURE_OPENAI_DEPLOYMENT="'"$AZURE_OPENAI_DEPLOYMENT"'" \
+                  --from-literal=GROQ_MODEL_NAME="'"$GROQ_MODEL_NAME"'" \
+                  -n '"$ns"' --dry-run=client -o yaml | kubectl apply -f -
+              '
+
+              echo "Creating deployment if not exists..."
+              az aks command invoke -g "$resourceGroup" -n "$aksCluster" --command \
+                "kubectl get deployment $dep -n $ns >/dev/null 2>&1 || kubectl create deployment $dep --image=$img -n $ns --port=8001"
+
+              echo "Setting image on deployment..."
+              az aks command invoke -g "$resourceGroup" -n "$aksCluster" --command \
+                "kubectl set image deployment/$dep $containerName=$img -n $ns"
+
+              echo "Injecting secrets as environment variables..."
+              az aks command invoke -g "$resourceGroup" -n "$aksCluster" --command \
+                "kubectl set env deployment/$dep -n $ns --from=secret/app-secrets"
+
+              echo "Ensuring ClusterIP service exists..."
+              az aks command invoke -g "$resourceGroup" -n "$aksCluster" --command \
+                "kubectl get svc $svc -n $ns >/dev/null 2>&1 || kubectl expose deployment $dep -n $ns --name=$svc --type=LoadBalancer --port=8001 --target-port=8001"
+
+              echo "Patching service to ensure correct port (8001)..."
+              az aks command invoke -g "$resourceGroup" -n "$aksCluster" --command \
+                "kubectl patch svc $svc -n $ns --type=merge -p '{"spec": {"type":"LoadBalancer","ports":[{"port":8001,"targetPort":8001}]}}'"
+
+              echo "Rolling out deployment..."
+              az aks command invoke -g "$resourceGroup" -n "$aksCluster" --command \
+                "kubectl rollout restart deployment/$dep -n $ns"
+
+              echo "Waiting for deployment to complete..."
+              az aks command invoke -g "$resourceGroup" -n "$aksCluster" --command \
+                "kubectl rollout status deployment/$dep -n $ns --timeout=180s || echo rollout-may-still-be-progressing"
+
+              echo "Showing deployment and service info..."
+              az aks command invoke -g "$resourceGroup" -n "$aksCluster" --command \
+                "kubectl get deploy/$dep svc/$svc -n $ns -o wide"
+          env:
+            subscriptionId: $(subscriptionId)
+            resourceGroup: $(resourceGroup)
+            aksCluster: $(aksCluster)
+            k8sNamespace: $(k8sNamespace)
+            deploymentName: $(deploymentName)
+            serviceName: $(serviceName)
+            acrLoginServer: $(acrLoginServer)
+            imageRepository: $(imageRepository)
+            imageTag: $(imageTag)
+
+            # Injected secrets from pipeline variables
+            GROQ_API_KEY: $(GROQ_API_KEY)
+            AZURE_OPENAI_API_KEY: $(AZURE_OPENAI_API_KEY)
+            AZURE_OPENAI_ENDPOINT: $(AZURE_OPENAI_ENDPOINT)
+            MONGO_URI: $(MONGO_URI)
+            AZURE_OPENAI_DEPLOYMENT: $(AZURE_OPENAI_DEPLOYMENT)
+            GROQ_MODEL_NAME: $(GROQ_MODEL_NAME)
